@@ -1,8 +1,7 @@
-package com.example.dg_andriod.ui.login;
+package com.example.dg_andriod.ui.webview;
 
 import android.app.Activity;
 import android.os.Bundle;
-import android.webkit.WebChromeClient;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 
@@ -11,20 +10,16 @@ import com.example.dg_andriod.R;
 public class WebViewActivity extends Activity {
 
     private WebView webView;
-    private String webViewUrl = "http://10.0.2.2:8081/";
+    private String webViewUrl = "http://10.0.2.2:8081/?#/vehicles";
     private WebSettings webSettings;
-    private String token;
-    private String type;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_web_view);
 
-        token = getIntent().getStringExtra("token");
-        type = getIntent().getStringExtra("type");
-
         webView = (WebView) findViewById(R.id.webview);
+        webView.setWebViewClient(new WebViewClientImpl(this));
 
         webSettings = webView.getSettings();
         webSettings.setJavaScriptEnabled(true);
@@ -35,6 +30,5 @@ public class WebViewActivity extends Activity {
 
         webView.addJavascriptInterface(new WebAppInterface(this), "NativeWebInterface");
         webView.loadUrl(webViewUrl);
-        webView.setWebViewClient(new WebViewClientImpl(this));
     }
 }

@@ -7,4 +7,8 @@ public class ApiUtils {
     public static UserService getUserService() {
         return RetrofitClient.getClient(BASE_URL).create(UserService.class);
     }
+
+    public static CustomerService getCustomerService() {
+        return RetrofitClient.getClient(BASE_URL).create(CustomerService.class);
+    }
 }

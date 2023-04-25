@@ -1,7 +1,5 @@
 package com.example.dg_andriod.ui.login;
 
-import android.app.Activity;
-
 import androidx.lifecycle.Observer;
 import androidx.lifecycle.ViewModelProvider;
 
@@ -13,17 +11,15 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import android.text.Editable;
 import android.text.TextWatcher;
-import android.view.KeyEvent;
 import android.view.View;
-import android.view.inputmethod.EditorInfo;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ProgressBar;
-import android.widget.TextView;
 import android.widget.Toast;
 
+import com.example.dg_andriod.NavActivity;
 import com.example.dg_andriod.R;
-import com.example.dg_andriod.data.model.ResObj;
+import com.example.dg_andriod.data.model.User;
 import com.example.dg_andriod.data.remote.LoginRequest;
 import com.example.dg_andriod.data.remote.ApiUtils;
 import com.example.dg_andriod.data.remote.UserService;
@@ -51,19 +47,16 @@ public class LoginActivity extends AppCompatActivity {
         final Button loginButton = findViewById(R.id.login);
         loadingProgressBar = findViewById(R.id.loading);
 
-        loginViewModel.getLoginFormState().observe(this, new Observer<LoginFormState>() {
-            @Override
-            public void onChanged(@Nullable LoginFormState loginFormState) {
-                if (loginFormState == null) {
-                    return;
-                }
-                loginButton.setEnabled(loginFormState.isDataValid());
-                if (loginFormState.getUsernameError() != null) {
-                    usernameEditText.setError(getString(loginFormState.getUsernameError()));
-                }
-                if (loginFormState.getPasswordError() != null) {
-                    passwordEditText.setError(getString(loginFormState.getPasswordError()));
-                }
+        loginViewModel.getLoginFormState().observe(this, loginFormState -> {
+            if (loginFormState == null) {
+                return;
+            }
+            loginButton.setEnabled(loginFormState.isDataValid());
+            if (loginFormState.getUsernameError() != null) {
+                usernameEditText.setError(getString(loginFormState.getUsernameError()));
+            }
+            if (loginFormState.getPasswordError() != null) {
+                passwordEditText.setError(getString(loginFormState.getPasswordError()));
             }
         });
 
@@ -86,25 +79,12 @@ public class LoginActivity extends AppCompatActivity {
         };
         usernameEditText.addTextChangedListener(afterTextChangedListener);
         passwordEditText.addTextChangedListener(afterTextChangedListener);
-        passwordEditText.setOnEditorActionListener(new TextView.OnEditorActionListener() {
-            @Override
-            public boolean onEditorAction(TextView v, int actionId, KeyEvent event) {
-                if (actionId == EditorInfo.IME_ACTION_DONE) {
-                    loginViewModel.login(usernameEditText.getText().toString(),
-                            passwordEditText.getText().toString());
-                }
-                return false;
-            }
-        });
 
-        loginButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                loadingProgressBar.setVisibility(View.VISIBLE);
-                String username = usernameEditText.getText().toString();
-                String password = passwordEditText.getText().toString();
-                doLogin(username, password);
-            }
+        loginButton.setOnClickListener(v -> {
+            loadingProgressBar.setVisibility(View.VISIBLE);
+            String username = usernameEditText.getText().toString();
+            String password = passwordEditText.getText().toString();
+            doLogin(username, password);
         });
     }
 
@@ -114,12 +94,12 @@ public class LoginActivity extends AppCompatActivity {
             @Override
             public void onResponse(Call call, Response response) {
                 if(response.isSuccessful()){
-                    ResObj resObj = (ResObj) response.body();
-                    if(!resObj.token.isEmpty() && !resObj.type.isEmpty()){
+                    User user = (User) response.body();
+                    if(!user.token.isEmpty() && !user.type.isEmpty()){
                         //login start main activity
-                        Intent intent = new Intent(LoginActivity.this, WebViewActivity.class);
-                        intent.putExtra("token", resObj.token);
-                        intent.putExtra("type", resObj.type);
+                        Intent intent = new Intent(LoginActivity.this, NavActivity.class);
+                        intent.putExtra("token", user.token);
+                        intent.putExtra("type", user.type);
                         startActivity(intent);
                     } else {
                         Toast.makeText(LoginActivity.this, "The username or password is incorrect", Toast.LENGTH_SHORT).show();

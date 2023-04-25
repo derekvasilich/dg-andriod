@@ -1,6 +1,6 @@
 package com.example.dg_andriod.data.model;
 
-public class ResObj {
+public class User {
     public String password;
     public String[] roles;
     public String token;
