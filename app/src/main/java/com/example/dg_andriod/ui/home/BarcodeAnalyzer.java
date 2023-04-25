@@ -28,7 +28,10 @@ public class BarcodeAnalyzer implements ImageAnalysis.Analyzer {
 
     BarcodeScannerOptions options =
             new BarcodeScannerOptions.Builder()
-                    .setBarcodeFormats(Barcode.FORMAT_PDF417)
+                    .setBarcodeFormats(
+                            Barcode.FORMAT_PDF417,
+                            Barcode.FORMAT_QR_CODE
+                    )
                     .enableAllPotentialBarcodes()
                     .build();
 
@@ -83,7 +86,6 @@ public class BarcodeAnalyzer implements ImageAnalysis.Analyzer {
                                             Log.v(MANUAL_TESTING_LOG, "Driver license issue country: " + dl.getIssuingCountry());
                                             Log.v(MANUAL_TESTING_LOG, "Driver license number: " + dl.getLicenseNumber());
                                         }
-                                        // show DL card with info
                                         break;
 
                                     default:
