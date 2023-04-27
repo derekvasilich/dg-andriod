@@ -6,14 +6,21 @@ import androidx.lifecycle.ViewModel;
 
 public class HomeViewModel extends ViewModel {
 
-    private MutableLiveData<String> mText;
+    enum HomeStatus {
+        LOADING,
+        SCANNING,
+        SEARCHING,
+        SAVING,
+        FOUND
+    };
+    private MutableLiveData<HomeStatus> mStatus;
 
     public HomeViewModel() {
-        mText = new MutableLiveData<>();
-        mText.setValue("This is home fragment");
+        mStatus = new MutableLiveData<>();
+        mStatus.setValue(HomeStatus.SCANNING);
     }
 
-    public LiveData<String> getText() {
-        return mText;
+    public LiveData<HomeStatus> getStatus() {
+        return mStatus;
     }
 }

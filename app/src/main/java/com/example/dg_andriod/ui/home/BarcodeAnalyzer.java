@@ -1,7 +1,6 @@
 package com.example.dg_andriod.ui.home;
 
 import android.annotation.SuppressLint;
-import android.content.Context;
 import android.graphics.Point;
 import android.graphics.Rect;
 import android.media.Image;
@@ -11,10 +10,7 @@ import androidx.annotation.NonNull;
 import androidx.camera.core.ImageAnalysis;
 import androidx.camera.core.ImageProxy;
 
-import com.google.android.gms.tasks.OnCompleteListener;
-import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
-import com.google.android.gms.tasks.Task;
 
 import com.google.mlkit.vision.barcode.BarcodeScanner;
 import com.google.mlkit.vision.barcode.BarcodeScannerOptions;
@@ -22,7 +18,7 @@ import com.google.mlkit.vision.barcode.BarcodeScanning;
 import com.google.mlkit.vision.barcode.common.Barcode;
 import com.google.mlkit.vision.common.InputImage;
 
-import java.util.List;
+import java.util.ArrayList;
 
 public class BarcodeAnalyzer implements ImageAnalysis.Analyzer {
 
@@ -35,80 +31,116 @@ public class BarcodeAnalyzer implements ImageAnalysis.Analyzer {
                     .enableAllPotentialBarcodes()
                     .build();
 
-    Context context;
+    String prevRawValue;
+    String prevPrevRawValue;
+    Rect bounds;
+    Point[] corners;
+    @NonNull OnSuccessListener<ArrayList<BarcodeField>> onSuccess;
 
     final String MANUAL_TESTING_LOG = "Barcodes";
 
-    public BarcodeAnalyzer(Context context) {
-        this.context = context;
+    public BarcodeAnalyzer(@NonNull OnSuccessListener<ArrayList<BarcodeField>> onSuccess) {
+        this.onSuccess = onSuccess;
     }
 
     @Override
+    @SuppressLint({"UnsafeOptInUsageError"})
     public void analyze(ImageProxy imageProxy) {
-        @SuppressLint({"UnsafeOptInUsageError"}) Image mediaImage = imageProxy.getImage();
-        if (mediaImage != null) {
-            InputImage image = InputImage.fromMediaImage(mediaImage, imageProxy.getImageInfo().getRotationDegrees());
-            BarcodeScanner scanner = BarcodeScanning.getClient(options);
-            Task<List<Barcode>> result = scanner.process(image)
-                    .addOnSuccessListener(new OnSuccessListener<List<Barcode>>() {
-                        @Override
-                        public void onSuccess(List<Barcode> barcodes) {
-                            // get parts of the barcode
-                            if (barcodes.isEmpty()) {
-                                Log.v(MANUAL_TESTING_LOG, "No barcode has been detected");
-                            }
-
-                            for (Barcode barcode: barcodes) {
-//                                Rect bounds = barcode.getBoundingBox();
-//                                Point[] corners = barcode.getCornerPoints();
-//
-//                                String rawValue = barcode.getRawValue();
-//
-                                int valueType = barcode.getValueType();
-
-                                // https://developers.google.com/ml-kit/vision/barcode-scanning/android#performance-tips
-                                switch (valueType) {
-                                    case Barcode.TYPE_DRIVER_LICENSE:
-                                        Barcode.DriverLicense dl = barcode.getDriverLicense();
-                                        if (dl != null) {
-                                            Log.v(MANUAL_TESTING_LOG, "Driver license city: " + dl.getAddressCity());
-                                            Log.v(MANUAL_TESTING_LOG, "Driver license state: " + dl.getAddressState());
-                                            Log.v(MANUAL_TESTING_LOG, "Driver license street: " + dl.getAddressStreet());
-                                            Log.v(MANUAL_TESTING_LOG, "Driver license zip code: " + dl.getAddressZip());
-                                            Log.v(MANUAL_TESTING_LOG, "Driver license birthday: " + dl.getBirthDate());
-                                            Log.v(MANUAL_TESTING_LOG, "Driver license document type: " + dl.getDocumentType());
-                                            Log.v(MANUAL_TESTING_LOG, "Driver license expiry date: " + dl.getExpiryDate());
-                                            Log.v(MANUAL_TESTING_LOG, "Driver license first name: " + dl.getFirstName());
-                                            Log.v(MANUAL_TESTING_LOG, "Driver license middle name: " + dl.getMiddleName());
-                                            Log.v(MANUAL_TESTING_LOG, "Driver license last name: " + dl.getLastName());
-                                            Log.v(MANUAL_TESTING_LOG, "Driver license gender: " + dl.getGender());
-                                            Log.v(MANUAL_TESTING_LOG, "Driver license issue date: " + dl.getIssueDate());
-                                            Log.v(MANUAL_TESTING_LOG, "Driver license issue country: " + dl.getIssuingCountry());
-                                            Log.v(MANUAL_TESTING_LOG, "Driver license number: " + dl.getLicenseNumber());
-                                        }
-                                        break;
-
-                                    default:
-                                        Log.v(MANUAL_TESTING_LOG, "Other barcode type detected: "+ valueType);
-                                        Log.v(MANUAL_TESTING_LOG, "Other barcode value: " + barcode.getRawValue());
-                                }
-                            }
-                        }
-                    })
-                    .addOnFailureListener(new OnFailureListener() {
-                        @Override
-                        public void onFailure(@NonNull Exception e) {
-                            // display failure
-                        }
-                    })
-                    .addOnCompleteListener(new OnCompleteListener<List<Barcode>>() {
-                       @Override
-                       public void onComplete(@NonNull Task<List<Barcode>> task) {
-                           // complete
-                           Log.v(MANUAL_TESTING_LOG, "Closing imageProxy.");
-                           imageProxy.close();
-                       }
-                   });
+        Image mediaImage = imageProxy.getImage();
+        if (mediaImage == null) {
+            return;
         }
+        InputImage image = InputImage.fromMediaImage(mediaImage, imageProxy.getImageInfo().getRotationDegrees());
+        BarcodeScanner scanner = BarcodeScanning.getClient(options);
+        scanner.process(image)
+                .addOnSuccessListener(barcodes -> {
+                    // get parts of the barcode
+                    if (barcodes.isEmpty()) {
+                        Log.v(MANUAL_TESTING_LOG, "No barcode has been detected");
+                    }
+
+                    for (Barcode barcode: barcodes) {
+                        bounds = barcode.getBoundingBox();
+                        corners = barcode.getCornerPoints();
+                        String rawValue = barcode.getRawValue();
+                        Barcode.UrlBookmark url = barcode.getUrl();
+                        int valueType = barcode.getValueType();
+                        String type = barcodeTypeToString(valueType);
+                        // require three consecutive matches
+                        if (valueType > 0 &&
+                                rawValue != null && prevRawValue != null && prevPrevRawValue != null &&
+                                rawValue.compareTo(prevRawValue) == 0 && prevRawValue.compareTo(prevPrevRawValue) == 0) {
+                            switch (valueType) {
+                                case Barcode.TYPE_DRIVER_LICENSE:
+                                    Barcode.DriverLicense dl = barcode.getDriverLicense();
+                                    if (dl != null) {
+                                        onSuccess.onSuccess(displayDriversLicenseCard(type, dl, bounds, corners));
+                                    }
+                                    break;
+
+                                default:
+                                    onSuccess.onSuccess(displayBarcodeCard(type, rawValue, bounds, corners));
+                            }
+                        }
+                        prevPrevRawValue = prevRawValue;
+                        prevRawValue = rawValue;
+                    }
+                })
+                .addOnFailureListener(e -> {
+                    // display failure
+                })
+                .addOnCompleteListener(task -> {
+                    imageProxy.close();
+                });
+    }
+
+    private String barcodeTypeToString(int valueType) {
+        switch (valueType) {
+            case Barcode.TYPE_UNKNOWN:              return "Unknown";
+            case Barcode.TYPE_CONTACT_INFO:         return "Contact Info";
+            case Barcode.TYPE_EMAIL:                return "Email";
+            case Barcode.TYPE_ISBN:                 return "ISBN";
+            case Barcode.TYPE_PHONE:                return "Phone";
+            case Barcode.TYPE_PRODUCT:              return "Product";
+            case Barcode.TYPE_SMS:                  return "SMS";
+            case Barcode.TYPE_TEXT:                 return "Text";
+            case Barcode.TYPE_URL:                  return "URL";
+            case Barcode.TYPE_WIFI:                 return "WiFi";
+            case Barcode.TYPE_GEO:                  return "Geo";
+            case Barcode.TYPE_CALENDAR_EVENT:       return "Calendar Event";
+            case Barcode.TYPE_DRIVER_LICENSE:       return "Drivers License";
+            default:                                return "Undefined";
+        }
+    }
+
+    private ArrayList<BarcodeField> displayBarcodeCard(String valueType, String rawValue, Rect bounds, Point[] corners) {
+        ArrayList<BarcodeField> barcodeList = new ArrayList<>();
+        barcodeList.add(new BarcodeField("Type detected:", valueType));
+        barcodeList.add(new BarcodeField("Other value: ", rawValue));
+        barcodeList.add(new BarcodeField("Bounds: ", bounds.toString()));
+        barcodeList.add(new BarcodeField("Corners: ", corners.toString()));
+        return barcodeList;
+    }
+
+    private ArrayList<BarcodeField> displayDriversLicenseCard(String valueType, Barcode.DriverLicense dl, Rect bounds, Point[] corners) {
+        ArrayList<BarcodeField> barcodeList = new ArrayList<>();
+        barcodeList.add(new BarcodeField("Type detected:", valueType));
+        barcodeList.add(new BarcodeField("City: ", dl.getAddressCity()));
+        barcodeList.add(new BarcodeField("State: ", dl.getAddressState()));
+        barcodeList.add(new BarcodeField("Street: ", dl.getAddressStreet()));
+        barcodeList.add(new BarcodeField("Zip code: ", dl.getAddressZip()));
+        barcodeList.add(new BarcodeField("Birthday: ", dl.getBirthDate()));
+        barcodeList.add(new BarcodeField("Document type: ", dl.getDocumentType()));
+        barcodeList.add(new BarcodeField("Expiry date: ", dl.getExpiryDate()));
+        barcodeList.add(new BarcodeField("First name: ", dl.getFirstName()));
+        barcodeList.add(new BarcodeField("Middle name: ", dl.getMiddleName()));
+        barcodeList.add(new BarcodeField("Last name: ", dl.getLastName()));
+        barcodeList.add(new BarcodeField("Gender: ", dl.getGender()));
+        barcodeList.add(new BarcodeField("Issue date: ", dl.getIssueDate()));
+        barcodeList.add(new BarcodeField("Issue country: ", dl.getIssuingCountry()));
+        barcodeList.add(new BarcodeField("License number: ", dl.getLicenseNumber()));
+        barcodeList.add(new BarcodeField("Bounds: ", bounds.toString()));
+        barcodeList.add(new BarcodeField("Corners: ", corners.toString()));
+        return barcodeList;
     }
 }

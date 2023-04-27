@@ -1,11 +1,9 @@
 package com.example.dg_andriod.ui.home;
 
+import android.content.DialogInterface;
 import android.content.pm.PackageManager;
-import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
-import android.os.Handler;
-import android.provider.MediaStore;
 import android.util.Size;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -14,7 +12,6 @@ import android.widget.Button;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
-import androidx.annotation.RequiresApi;
 import androidx.camera.core.ImageAnalysis;
 import androidx.camera.core.ImageCapture;
 import androidx.camera.core.ImageCaptureException;
@@ -34,6 +31,7 @@ import androidx.camera.core.CameraSelector;
 
 import java.io.File;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.Locale;
 import java.util.concurrent.ExecutionException;
@@ -47,6 +45,9 @@ public class HomeFragment extends Fragment {
     private ExecutorService cameraExecutor;
     private PreviewView mPreviewView;
     private ImageCapture imageCapture;
+    private ImageAnalysis barcodeAnalysis;
+    private BarcodeAnalyzer barcodeAnalyzer;
+    private BarcodeResultFragment barcodeResultFragment;
 
     private int REQUEST_CODE_PERMISSIONS = 1001;
     private final String[] REQUIRED_PERMISSIONS = new String[]{"android.permission.CAMERA", "android.permission.WRITE_EXTERNAL_STORAGE"};
@@ -71,7 +72,6 @@ public class HomeFragment extends Fragment {
     }
 
     public String getImagesDirectoryName() {
-
         String dirPath = "";
         dirPath = Environment.getExternalStorageDirectory().toString() + "/images";
         File dir = new File(dirPath);
@@ -100,7 +100,6 @@ public class HomeFragment extends Fragment {
     }
 
     private boolean allPermissionsGranted(){
-
         for(String permission : REQUIRED_PERMISSIONS){
             if(ContextCompat.checkSelfPermission(getActivity(), permission) != PackageManager.PERMISSION_GRANTED){
                 return false;
@@ -108,6 +107,7 @@ public class HomeFragment extends Fragment {
         }
         return true;
     }
+
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
 
@@ -134,16 +134,32 @@ public class HomeFragment extends Fragment {
                 .setTargetRotation(getActivity().getWindowManager().getDefaultDisplay().getRotation())
                 .build();
 
-        ImageAnalysis barcodeAnalysis = new ImageAnalysis.Builder()
+        barcodeAnalysis = new ImageAnalysis.Builder()
                 .setTargetResolution(new Size(1280, 720))
                 .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
                 .build();
-        barcodeAnalysis.setAnalyzer(cameraExecutor, new BarcodeAnalyzer(getContext()));
+
+        barcodeAnalyzer = new BarcodeAnalyzer(barcodeFieldList -> onSuccess(barcodeFieldList));
 
         preview.setSurfaceProvider(mPreviewView.getSurfaceProvider());
+        startAnalysis();
 
         cameraProvider.unbindAll();
         cameraProvider.bindToLifecycle((LifecycleOwner)this, cameraSelector, preview, barcodeAnalysis, imageCapture);
+    }
+
+    void startAnalysis() {
+        Toast.makeText(getContext(), "Point your camera at a barcode", Toast.LENGTH_LONG).show();
+        barcodeAnalysis.setAnalyzer(cameraExecutor, barcodeAnalyzer);
+    }
+
+    void onDismiss(DialogInterface dialogInterface) {
+        startAnalysis();
+    }
+
+    void onSuccess(ArrayList<BarcodeField> barcodeFieldList) {
+        BarcodeResultFragment.show(getActivity().getSupportFragmentManager(), barcodeFieldList, dialog -> onDismiss(dialog));
+        barcodeAnalysis.clearAnalyzer();
     }
 
     @Override
@@ -155,12 +171,13 @@ public class HomeFragment extends Fragment {
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater,
                              ViewGroup container, Bundle savedInstanceState) {
-        homeViewModel =
-                new ViewModelProvider(this).get(HomeViewModel.class);
+        homeViewModel = new ViewModelProvider(this).get(HomeViewModel.class);
         View root = inflater.inflate(R.layout.fragment_home, container, false);
 
         final Button buttonScan = root.findViewById(R.id.button_scan);
         final Button buttonCapture = root.findViewById(R.id.button_capture);
+        buttonScan.setVisibility(View.INVISIBLE);
+        buttonCapture.setVisibility(View.INVISIBLE);
 
         mPreviewView = root.findViewById(R.id.camera);
         cameraExecutor = Executors.newSingleThreadExecutor();
@@ -171,7 +188,7 @@ public class HomeFragment extends Fragment {
         }
 
         buttonScan.setOnClickListener(view -> {
-            Toast.makeText(getContext(), "Scan button clicked.", Toast.LENGTH_SHORT).show();
+            Toast.makeText(getContext(), "Scan button clicked", Toast.LENGTH_SHORT).show();
         });
         buttonCapture.setOnClickListener(view -> {
             captureImage();
