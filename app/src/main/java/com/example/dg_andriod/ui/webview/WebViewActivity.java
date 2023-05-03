@@ -5,12 +5,12 @@ import android.os.Bundle;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 
+import com.example.dg_andriod.BuildConfig;
 import com.example.dg_andriod.R;
 
 public class WebViewActivity extends Activity {
 
     private WebView webView;
-    private String webViewUrl = "http://10.0.2.2:8081/?#/vehicles";
     private WebSettings webSettings;
 
     @Override
@@ -29,6 +29,6 @@ public class WebViewActivity extends Activity {
         webSettings.setMediaPlaybackRequiresUserGesture(true);
 
         webView.addJavascriptInterface(new WebAppInterface(this), "NativeWebInterface");
-        webView.loadUrl(webViewUrl);
+        webView.loadUrl(BuildConfig.WEB_VIEW_URL);
     }
 }

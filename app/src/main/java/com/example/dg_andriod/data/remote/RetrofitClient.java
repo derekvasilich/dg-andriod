@@ -2,6 +2,8 @@ package com.example.dg_andriod.data.remote;
 
 import android.content.Context;
 
+import com.example.dg_andriod.BuildConfig;
+
 import java.io.IOException;
 
 import okhttp3.Interceptor;
@@ -17,7 +19,7 @@ public class RetrofitClient {
 
     private static Retrofit retrofit = null;
 
-    public static Retrofit getClient(String url, Context context) {
+    public static Retrofit getClient(Context context) {
         if(retrofit == null){
             OkHttpClient client = new OkHttpClient.Builder().addInterceptor(new Interceptor() {
                 @Override
@@ -34,7 +36,7 @@ public class RetrofitClient {
             }).build();
             retrofit = new Retrofit.Builder()
                     .client(client)
-                    .baseUrl(url)
+                    .baseUrl(BuildConfig.API_BASE_URL)
                     .addConverterFactory(GsonConverterFactory.create())
                     .build();
         }

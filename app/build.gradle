@@ -16,9 +16,20 @@ android {
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
 
         Properties properties = new Properties()
+        def propertiesFile = project.rootProject.file('local.properties')
+        def mapsApiKey = System.getenv('APP_MAPS_API_KEY')
+        def apiBaseUrl = System.getenv('APP_API_BASE_URL')
+        def webViewUrl = System.getenv('APP_WEB_VIEW_URL')
+        if (propertiesFile.exists()) {
+            properties.load(propertiesFile.newDataInputStream())
+            mapsApiKey = properties.getProperty('app.maps-api-key')
+            apiBaseUrl = properties.getProperty('app.api.base-url')
+            webViewUrl = properties.getProperty('app.web-view.url')
+        }
+        buildConfigField "String", "API_BASE_URL", "\"${apiBaseUrl}\""
+        buildConfigField "String", "WEB_VIEW_URL", "\"${webViewUrl}\""
 
-        properties.load(project.rootProject.file('local.properties').newDataInputStream())
-        manifestPlaceholders = [MAPS_API_KEY: "${properties.getProperty('MAPS_API_KEY')}"]
+        manifestPlaceholders = [MAPS_API_KEY: "${mapsApiKey}"]
     }
 
     buildTypes {
@@ -27,6 +38,7 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
+
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
@@ -34,8 +46,9 @@ android {
 }
 
 dependencies {
-    implementation 'com.google.android.gms:play-services-location:21.0.1'
     def camerax_version = "1.1.0-beta01"
+
+    implementation 'com.google.android.gms:play-services-location:21.0.1'
 
     implementation 'com.google.android.material:material:1.1.0'
     implementation 'com.google.android.gms:play-services-maps:17.0.0'
