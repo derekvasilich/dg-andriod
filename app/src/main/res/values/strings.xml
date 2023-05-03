@@ -29,7 +29,7 @@
     <string name="button_scan">Scan License</string>
     <string name="button_capture">Capture License</string>
     <string name="menu_gallery">Customers</string>
-    <string name="menu_slideshow">Slideshow</string>
+    <string name="menu_slideshow">Routes</string>
     <string name="menu_webview">Vehicles</string>
 
     <string name="barcode_button_save">Save</string>

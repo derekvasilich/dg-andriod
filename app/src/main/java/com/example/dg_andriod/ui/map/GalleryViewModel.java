@@ -1,4 +1,4 @@
-package com.example.dg_andriod.ui.gallery;
+package com.example.dg_andriod.ui.map;
 
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
